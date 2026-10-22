@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only dedicated staging directories are exposed to other apps, and only for
+     URIs SnapPDF explicitly hands out (temporary per-URI grants). -->
+<paths>
+    <cache-path name="share" path="share/" />
+    <cache-path name="camera" path="camera/" />
+</paths>
