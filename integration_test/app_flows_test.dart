@@ -35,7 +35,11 @@ void main() {
     final cache = await getTemporaryDirectory();
     ws = Workspace(root: Directory(p.join(docs.path, 'itest')), cache: Directory(p.join(cache.path, 'itest')));
     await ws.ensure();
-    store = LibraryStore(libraryDir: ws.libraryDir, trashDir: ws.trashDir, indexFile: File(p.join(ws.dataDir.path, 'lib.json')));
+    store = LibraryStore(
+      libraryDir: ws.libraryDir,
+      trashDir: ws.trashDir,
+      indexFile: File(p.join(ws.dataDir.path, 'lib.json')),
+    );
     await store.load();
     dir = await ws.newWorkDir();
   });
@@ -68,11 +72,21 @@ void main() {
     final src = img.Image(width: 3000, height: 2000);
     for (var y = 0; y < src.height; y += 4) {
       for (var x = 0; x < src.width; x += 4) {
-        img.fillRect(src, x1: x, y1: y, x2: x + 3, y2: y + 3, color: img.ColorRgb8((x * 7) % 256, (y * 3) % 256, (x + y) % 256));
+        img.fillRect(
+          src,
+          x1: x,
+          y1: y,
+          x2: x + 3,
+          y2: y + 3,
+          color: img.ColorRgb8((x * 7) % 256, (y * 3) % 256, (x + y) % 256),
+        );
       }
     }
     final input = img.encodeJpg(src, quality: 95);
-    final r = await processImage(input, const ImageSpec(format: ImgFormat.jpeg, resize: ResizeSpec(width: 1200, height: 1200), targetBytes: 150 * 1024));
+    final r = await processImage(
+      input,
+      const ImageSpec(format: ImgFormat.jpeg, resize: ResizeSpec(width: 1200, height: 1200), targetBytes: 150 * 1024),
+    );
     final tmp = File(p.join(dir.path, 'resized.jpg'))..writeAsBytesSync(r.bytes);
     final saved = await store.add(tmp, name: 'resized.jpg');
     final reopened = await store.fileOf(saved.entry).readAsBytes();
@@ -128,7 +142,10 @@ void main() {
     final canvas = Canvas(recorder);
     canvas.drawRect(const Rect.fromLTWH(0, 0, 1600, 600), Paint()..color = Colors.white);
     final tp = TextPainter(
-      text: const TextSpan(text: 'SNAPPDF INTEGRATION\nRECEIPT NUMBER 4821', style: TextStyle(color: Colors.black, fontSize: 80, fontWeight: FontWeight.bold)),
+      text: const TextSpan(
+        text: 'SNAPPDF INTEGRATION\nRECEIPT NUMBER 4821',
+        style: TextStyle(color: Colors.black, fontSize: 80, fontWeight: FontWeight.bold),
+      ),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: 1500);
     tp.paint(canvas, const Offset(60, 120));
@@ -150,8 +167,14 @@ void main() {
     final src = await textPdf('secret.pdf', 'Secret content');
     final locked = p.join(dir.path, 'locked.pdf');
     await api.protect({'path': src, 'output': locked, 'userPassword': 'pa55'});
-    await expectLater(api.pdfInfo(locked), throwsA(isA<NativeError>().having((e) => e.code, 'code', NativeError.passwordRequired)));
-    await expectLater(api.pdfInfo(locked, password: 'nope'), throwsA(isA<NativeError>().having((e) => e.code, 'code', NativeError.wrongPassword)));
+    await expectLater(
+      api.pdfInfo(locked),
+      throwsA(isA<NativeError>().having((e) => e.code, 'code', NativeError.passwordRequired)),
+    );
+    await expectLater(
+      api.pdfInfo(locked, password: 'nope'),
+      throwsA(isA<NativeError>().having((e) => e.code, 'code', NativeError.wrongPassword)),
+    );
     expect(await pdfiumPageCount(locked, password: 'pa55'), 1);
     final open = p.join(dir.path, 'open.pdf');
     await api.unlock(locked, 'pa55', open);
@@ -159,13 +182,12 @@ void main() {
   });
 
   testWidgets('app shell runs on device: tabs and a tool screen', (tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        workspaceProvider.overrideWithValue(ws),
-        libraryStoreProvider.overrideWithValue(store),
-      ],
-      child: const SnapApp(handleIncoming: false),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workspaceProvider.overrideWithValue(ws), libraryStoreProvider.overrideWithValue(store)],
+        child: const SnapApp(handleIncoming: false),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Quick actions'), findsOneWidget);
     for (final tab in ['Tools', 'Files', 'Settings', 'Home']) {
