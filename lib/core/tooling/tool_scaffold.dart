@@ -51,7 +51,10 @@ class ToolResult {
   final String? copyText;
 
   /// Optional extra widget shown above the outputs (e.g. size comparison).
-  final Widget? detail;
+  /// Extra content above the outputs (e.g. size comparison, preview). Built
+  /// with the final saved paths of [outputs], because temporary output files
+  /// are moved into the library before the result is shown.
+  final Widget Function(List<String> savedPaths)? detail;
 }
 
 enum _Phase { idle, running, done, failed }
@@ -193,6 +196,7 @@ class _ToolScaffoldState extends ConsumerState<ToolScaffold> {
                 tooltip: 'About this tool',
                 icon: const Icon(Icons.info_outline_rounded),
                 onPressed: () => showModalBottomSheet(
+                  useRootNavigator: true,
                   context: context,
                   builder: (context) => SafeArea(
                     child: Padding(
@@ -352,7 +356,10 @@ class ResultView extends ConsumerWidget {
             Expanded(child: Text(result.headline, style: t.titleLarge)),
           ],
         ),
-        if (result.detail != null) ...[const SizedBox(height: Gaps.xl), result.detail!],
+        if (result.detail != null) ...[
+          const SizedBox(height: Gaps.xl),
+          result.detail!([for (final e in saved) store.fileOf(e).path]),
+        ],
         if (result.checks.isNotEmpty) ...[
           const SizedBox(height: Gaps.xl),
           Text('Verified', style: t.titleSmall),

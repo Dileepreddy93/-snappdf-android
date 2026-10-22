@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -393,7 +395,6 @@ class _CompressPdfScreenState extends ConsumerState<CompressPdfScreen> with PdfI
         var after = 0;
         String? previewIn;
         String? previewInPw;
-        String? previewOut;
         for (var i = 0; i < inputs.length; i++) {
           job.throwIfCancelled();
           final f = inputs[i];
@@ -419,11 +420,16 @@ class _CompressPdfScreenState extends ConsumerState<CompressPdfScreen> with PdfI
               ),
             );
             bestSize = r.outputBytes;
-            if (r.outputBytes >= r.inputBytes * 0.98) {
+            if (r.outputBytes >= r.inputBytes && f.password == null) {
+              // Never hand back a bigger file: keep an exact copy of the original.
+              await File(f.path).copy(best);
+              bestSize = r.inputBytes;
               notes.add(
-                '${f.name} is already well optimised; compression saved little.'
-                '${r.imagesRecompressed == 0 ? ' It contains no images that could be reduced further.' : ''}',
+                '${f.name} could not be made smaller, so the original was kept unchanged.'
+                '${r.imagesRecompressed == 0 ? ' It contains no images that can be reduced.' : ''}',
               );
+            } else if (r.outputBytes >= r.inputBytes * 0.98) {
+              notes.add('${f.name} is already well optimised; compression saved little.');
             }
           } else {
             final target = _targetBytes!;
@@ -485,7 +491,6 @@ class _CompressPdfScreenState extends ConsumerState<CompressPdfScreen> with PdfI
           if (i == 0) {
             previewIn = f.path;
             previewInPw = f.password;
-            previewOut = best;
           }
         }
         return ToolResult(
@@ -493,7 +498,7 @@ class _CompressPdfScreenState extends ConsumerState<CompressPdfScreen> with PdfI
           outputs: outputs,
           checks: checks,
           notes: notes,
-          detail: Column(
+          detail: (saved) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizeComparison(
@@ -503,7 +508,7 @@ class _CompressPdfScreenState extends ConsumerState<CompressPdfScreen> with PdfI
               ),
               if (previewIn != null) ...[
                 const SizedBox(height: Gaps.xl),
-                PdfBeforeAfter(before: previewIn, beforePassword: previewInPw, after: previewOut!),
+                PdfBeforeAfter(before: previewIn, beforePassword: previewInPw, after: saved.first),
               ],
             ],
           ),

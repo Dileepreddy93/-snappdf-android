@@ -130,6 +130,7 @@ class _DrawSignaturePageState extends State<DrawSignaturePage> {
 Future<String?> pickSignature(BuildContext context, WidgetRef ref) async {
   final lib = ref.read(signatureLibraryProvider);
   final result = await showModalBottomSheet<Object>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     builder: (context) => const _SignatureSheet(),

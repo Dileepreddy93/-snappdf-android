@@ -12,6 +12,8 @@ import 'package:snappdf/core/files/workspace.dart';
 import 'package:snappdf/core/platform/native_api.dart';
 import 'package:snappdf/core/providers.dart';
 import 'package:snappdf/core/settings.dart';
+import 'package:snappdf/core/tooling/tool_scaffold.dart';
+import 'package:snappdf/features/editor/editor_screen.dart';
 import 'package:snappdf/features/tools/tool_registry.dart';
 
 /// Native bridge stand-in: records calls, returns neutral results.
@@ -257,6 +259,37 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'Final contract');
     await tapAndWait(tester, find.text('OK'));
     expect(find.text('Final contract.pdf'), findsOneWidget);
+  });
+
+  testWidgets('result screen opens the saved file through the router', (tester) async {
+    late LibraryEntry entry;
+    await tester.runAsync(() async => entry = await h.seed('Notes.txt', 'hello from the result page'));
+    await pumpApp(tester, h);
+    final router = GoRouterHelper.of(tester);
+    unawaited(router.push('/tool/edit_pdf'));
+    await tester.pumpAndSettle();
+    // Same pattern as the editor after saving: replace the tool with its result.
+    unawaited(
+      router.pushReplacement(
+        '/result',
+        extra: ResultPage(
+          title: 'Edit PDF',
+          result: const ToolResult(headline: 'Changes saved'),
+          saved: [entry],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Changes saved'), findsOneWidget);
+    await tester.tap(find.text('Open'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.widgetWithText(AppBar, 'Notes.txt'), findsOneWidget, reason: 'viewer opened');
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Changes saved'), findsOneWidget);
   });
 
   testWidgets('settings switch theme', (tester) async {

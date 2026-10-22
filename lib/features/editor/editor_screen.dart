@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:pdfrx/pdfrx.dart';
 
@@ -529,25 +530,26 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             },
           );
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ResultPage(
-            title: switch (widget.mode) {
-              EditorMode.redact => 'Redact',
-              EditorMode.sign => 'Sign PDF',
-              EditorMode.edit => 'Edit PDF',
+      // Through go_router: replacing a router-managed page with an imperative
+      // route desynchronises the router's page list.
+      context.pushReplacement(
+        '/result',
+        extra: ResultPage(
+          title: switch (widget.mode) {
+            EditorMode.redact => 'Redact',
+            EditorMode.sign => 'Sign PDF',
+            EditorMode.edit => 'Edit PDF',
+          },
+          result: ToolResult(
+            headline: switch (widget.mode) {
+              EditorMode.redact => 'Redacted and saved',
+              EditorMode.sign => 'Signed and saved',
+              EditorMode.edit => 'Changes saved',
             },
-            result: ToolResult(
-              headline: switch (widget.mode) {
-                EditorMode.redact => 'Redacted and saved',
-                EditorMode.sign => 'Signed and saved',
-                EditorMode.edit => 'Changes saved',
-              },
-              checks: checks,
-              notes: notes,
-            ),
-            saved: [saved.entry],
+            checks: checks,
+            notes: notes,
           ),
+          saved: [saved.entry],
         ),
       );
     } on NativeError catch (e) {

@@ -93,6 +93,7 @@ class _OrganizeScreenState extends ConsumerState<OrganizeScreen> {
 
   Future<void> _addMenu() async {
     final choice = await showModalBottomSheet<String>(
+      useRootNavigator: true,
       context: context,
       builder: (context) => SafeArea(
         child: Column(

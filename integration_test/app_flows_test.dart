@@ -15,6 +15,7 @@ import 'package:snappdf/core/files/library_store.dart';
 import 'package:snappdf/core/files/workspace.dart';
 import 'package:snappdf/core/platform/native_api.dart';
 import 'package:snappdf/core/providers.dart';
+import 'package:snappdf/features/viewer/pdf_viewer_screen.dart';
 import 'package:snappdf/features/image/engine/image_engine.dart';
 import 'package:snappdf/features/image/engine/image_format.dart';
 
@@ -179,6 +180,29 @@ void main() {
     final open = p.join(dir.path, 'open.pdf');
     await api.unlock(locked, 'pa55', open);
     expect((await api.pdfInfo(open)).encrypted, isFalse);
+  });
+
+  testWidgets('viewer opens a real PDF and navigates pages', (tester) async {
+    final path = await textPdf('viewer.pdf', List.generate(150, (i) => 'Viewer line $i').join('\n'));
+    final entry = (await store.add(File(path), name: 'viewer.pdf')).entry;
+    final pages = (await api.pdfInfo(store.fileOf(entry).path)).pageCount;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [workspaceProvider.overrideWithValue(ws), libraryStoreProvider.overrideWithValue(store)],
+        child: MaterialApp(home: PdfViewerScreen(entry: entry)),
+      ),
+    );
+    for (var i = 0; i < 30 && find.text('Page 1 of $pages').evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.text('Page 1 of $pages'), findsOneWidget);
+    await tester.tap(find.byTooltip('Next page'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.text('Page 2 of $pages'), findsOneWidget);
   });
 
   testWidgets('app shell runs on device: tabs and a tool screen', (tester) async {

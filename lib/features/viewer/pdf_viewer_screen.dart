@@ -23,7 +23,9 @@ class PdfViewerScreen extends ConsumerStatefulWidget {
 
 class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   final _controller = PdfViewerController();
-  late final PdfTextSearcher _searcher = PdfTextSearcher(_controller)..addListener(_onSearch);
+
+  /// Created once the viewer is ready: PdfTextSearcher needs an attached controller.
+  PdfTextSearcher? _searcher;
   final _query = TextEditingController();
   bool _searching = false;
   int? _page;
@@ -43,8 +45,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
 
   @override
   void dispose() {
-    _searcher.removeListener(_onSearch);
-    _searcher.dispose();
+    _searcher?.removeListener(_onSearch);
+    _searcher?.dispose();
     _query.dispose();
     super.dispose();
   }
@@ -104,7 +106,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
                 tooltip: 'Close search',
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () {
-                  _searcher.resetTextSearch();
+                  _searcher?.resetTextSearch();
                   setState(() => _searching = false);
                 },
               ),
@@ -120,33 +122,33 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                 ),
-                onChanged: (v) => _searcher.startTextSearch(v, caseInsensitive: true),
-                onSubmitted: (_) => _searcher.goToNextMatch(),
+                onChanged: (v) => _searcher?.startTextSearch(v, caseInsensitive: true),
+                onSubmitted: (_) => _searcher?.goToNextMatch(),
               ),
               actions: [
-                if (_searcher.isSearching)
+                if (_searcher?.isSearching ?? false)
                   const Padding(
                     padding: EdgeInsets.all(14),
                     child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
                   )
-                else if (_query.text.isNotEmpty)
+                else if (_query.text.isNotEmpty && _searcher != null)
                   Center(
                     child: Text(
-                      _searcher.matches.isEmpty
+                      _searcher!.matches.isEmpty
                           ? 'No results'
-                          : '${(_searcher.currentIndex ?? 0) + 1}/${_searcher.matches.length}',
+                          : '${(_searcher!.currentIndex ?? 0) + 1}/${_searcher!.matches.length}',
                       style: t.labelLarge,
                     ),
                   ),
                 IconButton(
                   tooltip: 'Previous result',
                   icon: const Icon(Icons.keyboard_arrow_up_rounded),
-                  onPressed: _searcher.hasMatches ? () => _searcher.goToPrevMatch() : null,
+                  onPressed: (_searcher?.hasMatches ?? false) ? () => _searcher!.goToPrevMatch() : null,
                 ),
                 IconButton(
                   tooltip: 'Next result',
                   icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                  onPressed: _searcher.hasMatches ? () => _searcher.goToNextMatch() : null,
+                  onPressed: (_searcher?.hasMatches ?? false) ? () => _searcher!.goToNextMatch() : null,
                 ),
               ],
             )
@@ -223,8 +225,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
             offset: const Offset(0, 2),
           ),
           textSelectionParams: const PdfTextSelectionParams(enabled: true),
-          pagePaintCallbacks: [_searcher.pageTextMatchPaintCallback],
+          pagePaintCallbacks: [(canvas, rect, page) => _searcher?.pageTextMatchPaintCallback(canvas, rect, page)],
           onViewerReady: (document, controller) {
+            _searcher ??= PdfTextSearcher(_controller)..addListener(_onSearch);
             setState(() {
               _pageCount = document.pages.length;
               _page = controller.pageNumber ?? 1;
@@ -239,18 +242,6 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
                 ? 'A password is required.'
                 : 'It may be damaged or use an unsupported format.',
           ),
-          viewerOverlayBuilder: (context, size, handleLinkTap) => [
-            PdfViewerScrollThumb(
-              controller: _controller,
-              orientation: ScrollbarOrientation.right,
-              thumbSize: const Size(44, 28),
-              thumbBuilder: (context, thumbSize, pageNumber, controller) => Container(
-                decoration: BoxDecoration(color: s.inverseSurface, borderRadius: BorderRadius.circular(Radii.s)),
-                alignment: Alignment.center,
-                child: Text('${pageNumber ?? ''}', style: t.labelMedium!.copyWith(color: s.onInverseSurface)),
-              ),
-            ),
-          ],
         ),
       ),
       bottomNavigationBar: _pageCount == 0

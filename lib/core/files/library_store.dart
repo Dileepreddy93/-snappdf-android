@@ -254,6 +254,8 @@ class LibraryStore {
     var ext = p.extension(name).toLowerCase();
     if (ext.isEmpty) ext = p.extension(source.path).toLowerCase();
     final displayName = sanitizeFileName(p.extension(name).isEmpty ? '$name$ext' : name);
+    // Display names are unique within a folder, so files can be told apart.
+    final uniqueDisplayName = uniqueName(displayName, active.where((e) => e.folder == folder).map((e) => e.name));
     final storedName = '$id$ext';
     final target = File(p.join(libraryDir.path, storedName));
     await libraryDir.create(recursive: true);
@@ -273,7 +275,7 @@ class LibraryStore {
     final duplicate = active.where((e) => e.sha256 == hash).fold<LibraryEntry?>(null, (a, b) => a ?? b);
     final entry = LibraryEntry(
       id: id,
-      name: displayName,
+      name: uniqueDisplayName,
       storedName: storedName,
       size: await target.length(),
       sha256: hash,

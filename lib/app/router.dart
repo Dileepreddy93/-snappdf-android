@@ -51,6 +51,15 @@ GoRouter buildRouter() => GoRouter(
     ),
     GoRoute(path: '/search', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const SearchScreen()),
     GoRoute(
+      path: '/result',
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (_, state) => state.extra is Widget
+          ? state.extra! as Widget
+          : const Scaffold(
+              body: EmptyState(icon: Icons.help_outline, title: 'Nothing to show'),
+            ),
+    ),
+    GoRoute(
       path: '/viewer',
       parentNavigatorKey: rootNavigatorKey,
       builder: (_, state) => PdfViewerScreen(entry: state.extra! as LibraryEntry),

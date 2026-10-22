@@ -44,6 +44,15 @@ void main() {
     expect(again.active.single.history.single.action, 'Created');
   });
 
+  test('display names are unique within a folder', () async {
+    final a = await store.add(await temp('1.pdf', '1'), name: 'Scan.pdf');
+    final b = await store.add(await temp('2.pdf', '2'), name: 'Scan.pdf');
+    final c = await store.add(await temp('3.pdf', '3'), name: 'scan.pdf');
+    expect([a.entry.name, b.entry.name, c.entry.name], ['Scan.pdf', 'Scan (2).pdf', 'scan (3).pdf']);
+    final other = await store.add(await temp('4.pdf', '4'), name: 'Scan.pdf', folder: 'Work');
+    expect(other.entry.name, 'Scan.pdf');
+  });
+
   test('copy mode keeps the source', () async {
     final src = await temp('b.jpg', 'jpg');
     await store.add(src, name: 'b.jpg', move: false);

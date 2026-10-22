@@ -88,6 +88,7 @@ Future<String?> askName(BuildContext context, {required String title, String ini
 
 /// Picks a folder name (existing or new). Returns '' for top level, null if cancelled.
 Future<String?> pickFolderName(BuildContext context, List<String> folders) => showModalBottomSheet<String>(
+  useRootNavigator: true,
   context: context,
   builder: (context) => SafeArea(
     child: ListView(
@@ -120,6 +121,7 @@ Future<void> showFileActions(BuildContext context, WidgetRef ref, LibraryEntry e
   final path = store.fileOf(entry).path;
   final t = Theme.of(context).textTheme;
   final action = await showModalBottomSheet<String>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     builder: (context) => SafeArea(
@@ -299,6 +301,7 @@ Future<void> showDetails(BuildContext context, WidgetRef ref, LibraryEntry entry
   final duplicates = store.active.where((e) => e.id != entry.id && e.sha256 == entry.sha256).toList();
   if (!context.mounted) return;
   await showModalBottomSheet(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     builder: (context) => DraggableScrollableSheet(

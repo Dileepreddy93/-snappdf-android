@@ -60,6 +60,7 @@ Future<List<InputFile>> pickInputs(
   final canCamera = accept == Accept.image || accept == Accept.pdfOrImage;
 
   final source = await showModalBottomSheet<String>(
+    useRootNavigator: true,
     context: context,
     builder: (context) => SafeArea(
       child: Column(

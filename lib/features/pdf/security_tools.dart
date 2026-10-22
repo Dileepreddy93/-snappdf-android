@@ -566,7 +566,7 @@ class _WatermarkPdfScreenState extends ConsumerState<WatermarkPdfScreen> with Pd
           outputs: [OutputFile(out, name)],
           checks: await verifyPdf(api, out, expectedPages: firstInfo?.pageCount),
           notes: securityNotes(),
-          detail: PdfBeforeAfter(before: f.path, beforePassword: f.password, after: out),
+          detail: (saved) => PdfBeforeAfter(before: f.path, beforePassword: f.password, after: saved.first),
         );
       },
     );
@@ -714,7 +714,7 @@ class _PageNumbersScreenState extends ConsumerState<PageNumbersScreen> with PdfI
           outputs: [OutputFile(out, name)],
           checks: await verifyPdf(api, out, expectedPages: firstInfo?.pageCount),
           notes: securityNotes(),
-          detail: PdfBeforeAfter(before: f.path, beforePassword: f.password, after: out),
+          detail: (saved) => PdfBeforeAfter(before: f.path, beforePassword: f.password, after: saved.first),
         );
       },
     );

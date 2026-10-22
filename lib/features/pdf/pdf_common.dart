@@ -179,7 +179,10 @@ class _PdfBeforeAfterState extends ConsumerState<PdfBeforeAfter> {
     return FutureBuilder<List<String>>(
       future: _renders,
       builder: (context, snap) {
-        if (snap.hasError) return const SizedBox.shrink();
+        if (snap.hasError) {
+          debugPrint('Preview failed: ${snap.error}');
+          return Text('Preview unavailable: ${snap.error}', style: t.bodySmall);
+        }
         if (!snap.hasData) {
           return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator()));
         }

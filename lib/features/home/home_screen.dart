@@ -224,8 +224,8 @@ class ToolsScreen extends StatelessWidget {
                   crossAxisCount: columns,
                   mainAxisSpacing: Gaps.m,
                   crossAxisSpacing: Gaps.m,
-                  // Icon + padding, plus two title lines and one subtitle line at the user's text size.
-                  mainAxisExtent: 90 + MediaQuery.textScalerOf(context).scale(58),
+                  // Icon + padding, plus one title line and two subtitle lines at the user's text size.
+                  mainAxisExtent: 88 + MediaQuery.textScalerOf(context).scale(56),
                 ),
                 delegate: SliverChildListDelegate([
                   for (final tool in allTools.where((t) => t.category == cat))

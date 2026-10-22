@@ -88,10 +88,10 @@ class ToolTile extends StatelessWidget {
             children: [
               ToneIcon(icon, tone: tone, size: 40),
               const SizedBox(height: Gaps.m),
-              Text(title, style: t.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(title, style: t.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
               if (subtitle != null) ...[
                 const SizedBox(height: 2),
-                Text(subtitle!, style: t.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(subtitle!, style: t.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
               ],
             ],
           ),
