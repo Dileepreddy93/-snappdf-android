@@ -28,6 +28,8 @@ object PdfCreate {
         val margin: Float = 0f,
         /** "original" (no recompression of JPEGs), "high" or "medium". */
         val quality: String = "original",
+        /** With pageSize "dpi": page size = image pixels at this resolution (exact physical size). */
+        val dpi: Float = 300f,
     )
 
     /** Max pixel dimension for 32-bit bitmaps decoded here (~ 64 MB). */
@@ -65,6 +67,7 @@ object PdfCreate {
         val landscapeImage = imgW > imgH
 
         val page = when (opts.pageSize) {
+            "dpi" -> PDPage(PDRectangle(imgW * 72f / opts.dpi + 2 * opts.margin, imgH * 72f / opts.dpi + 2 * opts.margin))
             "fit" -> {
                 val w = if (landscapeImage) 842f else 595f
                 PDPage(PDRectangle(w + 2 * opts.margin, w * imgH / imgW + 2 * opts.margin))

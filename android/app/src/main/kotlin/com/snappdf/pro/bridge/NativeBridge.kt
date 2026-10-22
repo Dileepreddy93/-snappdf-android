@@ -322,6 +322,7 @@ class NativeBridge(private val activity: Activity, messenger: BinaryMessenger) {
                     PdfCreate.ImagePdfOptions(
                         pageSize = a.stringOrNull("pageSize") ?: "a4", orientation = a.stringOrNull("orientation") ?: "auto",
                         margin = a.float("margin", 0f), quality = a.stringOrNull("quality") ?: "original",
+                        dpi = a.float("dpi", 300f),
                     ),
                     ctx,
                 )
@@ -394,6 +395,7 @@ class NativeBridge(private val activity: Activity, messenger: BinaryMessenger) {
             "text" -> PdfEdit.Text(
                 page, e.double("x"), e.double("y"), e.string("text"), e.float("fontSize", 14f),
                 e.long("color", 0xFF000000), e.bool("bold"), e.double("rotation", 0.0),
+                e.doubleOrNull("baseline"), e.doubleOrNull("lineHeight"),
             )
             "image" -> PdfEdit.Image(
                 page, e.double("x"), e.double("y"), e.double("w"), e.double("h"), e.string("path"),

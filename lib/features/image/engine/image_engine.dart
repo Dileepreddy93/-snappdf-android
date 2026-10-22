@@ -25,16 +25,14 @@ enum ResizeMode {
 
   /// Exactly width x height, distorting if the aspect ratio differs.
   stretch,
+
+  /// Fit inside width x height, then centre on a canvas of exactly that size
+  /// (transparent, or the background colour for formats without alpha).
+  pad,
 }
 
 class ResizeSpec {
-  const ResizeSpec({
-    this.width,
-    this.height,
-    this.percent,
-    this.mode = ResizeMode.fit,
-    this.allowUpscale = false,
-  });
+  const ResizeSpec({this.width, this.height, this.percent, this.mode = ResizeMode.fit, this.allowUpscale = false});
 
   final int? width;
   final int? height;
@@ -48,23 +46,23 @@ class ResizeSpec {
   bool get isExact =>
       width != null &&
       height != null &&
-      (mode == ResizeMode.fill || mode == ResizeMode.stretch);
+      (mode == ResizeMode.fill || mode == ResizeMode.stretch || mode == ResizeMode.pad);
 
   Map<String, Object?> toJson() => {
-        'width': width,
-        'height': height,
-        'percent': percent,
-        'mode': mode.name,
-        'allowUpscale': allowUpscale,
-      };
+    'width': width,
+    'height': height,
+    'percent': percent,
+    'mode': mode.name,
+    'allowUpscale': allowUpscale,
+  };
 
   factory ResizeSpec.fromJson(Map<String, Object?> j) => ResizeSpec(
-        width: j['width'] as int?,
-        height: j['height'] as int?,
-        percent: (j['percent'] as num?)?.toDouble(),
-        mode: ResizeMode.values.byName(j['mode'] as String? ?? 'fit'),
-        allowUpscale: j['allowUpscale'] as bool? ?? false,
-      );
+    width: j['width'] as int?,
+    height: j['height'] as int?,
+    percent: (j['percent'] as num?)?.toDouble(),
+    mode: ResizeMode.values.byName(j['mode'] as String? ?? 'fit'),
+    allowUpscale: j['allowUpscale'] as bool? ?? false,
+  );
 }
 
 /// Crop rectangle in pixels of the upright (EXIF-corrected) source image.
@@ -77,12 +75,7 @@ class CropRect {
 }
 
 class Adjustments {
-  const Adjustments({
-    this.brightness = 0,
-    this.contrast = 0,
-    this.saturation = 0,
-    this.sharpness = 0,
-  });
+  const Adjustments({this.brightness = 0, this.contrast = 0, this.saturation = 0, this.sharpness = 0});
 
   /// -1..1, 0 = unchanged.
   final double brightness;
@@ -92,8 +85,7 @@ class Adjustments {
   /// 0..1, 0 = unchanged.
   final double sharpness;
 
-  bool get isIdentity =>
-      brightness == 0 && contrast == 0 && saturation == 0 && sharpness == 0;
+  bool get isIdentity => brightness == 0 && contrast == 0 && saturation == 0 && sharpness == 0;
 }
 
 /// A pre-rendered overlay (e.g. a text watermark drawn with Flutter) placed
@@ -199,8 +191,7 @@ class ImageResult {
 }
 
 class ImageProbe {
-  ImageProbe(this.width, this.height, this.format, this.hasAlpha,
-      this.orientation);
+  ImageProbe(this.width, this.height, this.format, this.hasAlpha, this.orientation);
   final int width;
   final int height;
   final ImgFormat? format;
@@ -216,15 +207,13 @@ img.Image decodeUpright(Uint8List bytes) {
   }
   final info = decoder.startDecode(bytes);
   if (info != null && info.width * info.height > kMaxImagePixels) {
-    throw ImageEngineException(
-        'This image is too large (${info.width} x ${info.height}).');
+    throw ImageEngineException('This image is too large (${info.width} x ${info.height}).');
   }
   final image = decoder.decode(bytes, frame: 0);
   if (image == null) {
     throw ImageEngineException('The image could not be decoded.');
   }
-  if (image.exif.imageIfd.hasOrientation &&
-      image.exif.imageIfd.orientation != 1) {
+  if (image.exif.imageIfd.hasOrientation && image.exif.imageIfd.orientation != 1) {
     return img.bakeOrientation(image);
   }
   return image;
@@ -233,13 +222,7 @@ img.Image decodeUpright(Uint8List bytes) {
 ImageProbe probeImage(Uint8List bytes) {
   final image = decodeUpright(bytes);
   final format = ImgFormat.sniff(bytes);
-  return ImageProbe(
-    image.width,
-    image.height,
-    format,
-    image.hasAlpha && _anyTransparent(image),
-    1,
-  );
+  return ImageProbe(image.width, image.height, format, image.hasAlpha && _anyTransparent(image), 1);
 }
 
 bool _anyTransparent(img.Image image) {
@@ -256,8 +239,7 @@ bool _anyTransparent(img.Image image) {
 }
 
 /// Runs [processImageSync] on a background isolate.
-Future<ImageResult> processImage(Uint8List input, ImageSpec spec) =>
-    Isolate.run(() => processImageSync(input, spec));
+Future<ImageResult> processImage(Uint8List input, ImageSpec spec) => Isolate.run(() => processImageSync(input, spec));
 
 ImageResult processImageSync(Uint8List input, ImageSpec spec) {
   final notes = <String>[];
@@ -292,10 +274,13 @@ ImageResult processImageSync(Uint8List input, ImageSpec spec) {
     image = _applyOverlay(image, spec.overlay!);
   }
   if (!format.alpha && image.hasAlpha) {
+    final hadTransparency = _anyTransparent(image);
     image = flattenAlpha(image, spec.background);
-    if (inputFormat != null && inputFormat.alpha && _anyTransparent(image)) {
-      notes.add('Transparent areas were filled because ${format.label} '
-          'does not support transparency.');
+    if (hadTransparency) {
+      notes.add(
+        'Transparent areas were filled because ${format.label} '
+        'does not support transparency.',
+      );
     }
   }
 
@@ -310,8 +295,7 @@ img.Image applyResize(img.Image image, ResizeSpec r, List<String> notes) {
     final f = r.percent! / 100.0;
     w = math.max(1, (image.width * f).round());
     h = math.max(1, (image.height * f).round());
-    return img.copyResize(image,
-        width: w, height: h, interpolation: img.Interpolation.cubic);
+    return img.copyResize(image, width: w, height: h, interpolation: img.Interpolation.cubic);
   }
   if (w != null && w <= 0 || h != null && h <= 0) {
     throw ImageEngineException('Width and height must be positive.');
@@ -326,21 +310,32 @@ img.Image applyResize(img.Image image, ResizeSpec r, List<String> notes) {
       if (!r.allowUpscale && (w > image.width || h > image.height)) {
         notes.add('The image was enlarged; it may look soft.');
       }
-      return img.copyResize(image,
-          width: w, height: h, interpolation: img.Interpolation.cubic);
+      return img.copyResize(image, width: w, height: h, interpolation: img.Interpolation.cubic);
+    case ResizeMode.pad:
+      if (w == null || h == null) {
+        return applyResize(image, ResizeSpec(width: w, height: h, allowUpscale: r.allowUpscale), notes);
+      }
+      final s = math.min(w / image.width, math.min(h / image.height, r.allowUpscale ? double.infinity : 1.0));
+      final iw = math.max(1, (image.width * s).round());
+      final ih = math.max(1, (image.height * s).round());
+      final scaled = (iw == image.width && ih == image.height)
+          ? image
+          : img.copyResize(image, width: iw, height: ih, interpolation: img.Interpolation.cubic);
+      final canvas = img.Image(width: w, height: h, numChannels: 4);
+      return img.compositeImage(canvas, scaled, dstX: (w - iw) ~/ 2, dstY: (h - ih) ~/ 2);
     case ResizeMode.fill:
       if (w == null || h == null) {
         return applyResize(
-            image, ResizeSpec(width: w, height: h, mode: ResizeMode.fit,
-                allowUpscale: r.allowUpscale), notes);
+          image,
+          ResizeSpec(width: w, height: h, mode: ResizeMode.fit, allowUpscale: r.allowUpscale),
+          notes,
+        );
       }
       final scale = math.max(w / image.width, h / image.height);
       final sw = math.max(w, (image.width * scale).round());
       final sh = math.max(h, (image.height * scale).round());
-      final scaled = img.copyResize(image,
-          width: sw, height: sh, interpolation: img.Interpolation.cubic);
-      return img.copyCrop(scaled,
-          x: (sw - w) ~/ 2, y: (sh - h) ~/ 2, width: w, height: h);
+      final scaled = img.copyResize(image, width: sw, height: sh, interpolation: img.Interpolation.cubic);
+      return img.copyCrop(scaled, x: (sw - w) ~/ 2, y: (sh - h) ~/ 2, width: w, height: h);
     case ResizeMode.fit:
       final scale = math.min(
         w != null ? w / image.width : double.infinity,
@@ -352,10 +347,12 @@ img.Image applyResize(img.Image image, ResizeSpec r, List<String> notes) {
         }
         return image;
       }
-      return img.copyResize(image,
-          width: math.max(1, (image.width * scale).round()),
-          height: math.max(1, (image.height * scale).round()),
-          interpolation: img.Interpolation.cubic);
+      return img.copyResize(
+        image,
+        width: math.max(1, (image.width * scale).round()),
+        height: math.max(1, (image.height * scale).round()),
+        interpolation: img.Interpolation.cubic,
+      );
   }
 }
 
@@ -371,18 +368,14 @@ img.Image applyAdjustments(img.Image image, Adjustments a) {
   }
   if (a.sharpness > 0) {
     // Unsharp-style 3x3 kernel blended by amount.
-    out = img.convolution(out,
-        filter: const [0, -1, 0, -1, 5, -1, 0, -1, 0],
-        amount: a.sharpness.clamp(0, 1));
+    out = img.convolution(out, filter: const [0, -1, 0, -1, 5, -1, 0, -1, 0], amount: a.sharpness.clamp(0, 1));
   }
   return out;
 }
 
 img.Image flattenAlpha(img.Image image, int argb) {
-  final bg = img.Image(
-      width: image.width, height: image.height, numChannels: 3);
-  img.fill(bg,
-      color: img.ColorRgb8((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF));
+  final bg = img.Image(width: image.width, height: image.height, numChannels: 3);
+  img.fill(bg, color: img.ColorRgb8((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF));
   return img.compositeImage(bg, image);
 }
 
@@ -390,13 +383,9 @@ img.Image _applyMask(img.Image image, Uint8List maskPng, int? background) {
   var mask = img.decodePng(maskPng);
   if (mask == null) throw ImageEngineException('Invalid mask.');
   if (mask.width != image.width || mask.height != image.height) {
-    mask = img.copyResize(mask,
-        width: image.width,
-        height: image.height,
-        interpolation: img.Interpolation.linear);
+    mask = img.copyResize(mask, width: image.width, height: image.height, interpolation: img.Interpolation.linear);
   }
-  final out = img.Image(
-      width: image.width, height: image.height, numChannels: 4);
+  final out = img.Image(width: image.width, height: image.height, numChannels: 4);
   final br = background != null ? (background >> 16) & 0xFF : 0;
   final bgG = background != null ? (background >> 8) & 0xFF : 0;
   final bb = background != null ? background & 0xFF : 0;
@@ -427,15 +416,15 @@ img.Image _applyMask(img.Image image, Uint8List maskPng, int? background) {
 
 img.Image _applyOverlay(img.Image image, Overlay o) {
   final overlay = img.Image.fromBytes(
-      width: o.width,
-      height: o.height,
-      bytes: o.rgba.buffer,
-      numChannels: 4,
-      order: img.ChannelOrder.rgba);
+    width: o.width,
+    height: o.height,
+    bytes: o.rgba.buffer,
+    numChannels: 4,
+    order: img.ChannelOrder.rgba,
+  );
   final targetW = math.max(1, (image.width * o.widthFraction).round());
   final targetH = math.max(1, (o.height * targetW / o.width).round());
-  final scaled = img.copyResize(overlay,
-      width: targetW, height: targetH, interpolation: img.Interpolation.cubic);
+  final scaled = img.copyResize(overlay, width: targetW, height: targetH, interpolation: img.Interpolation.cubic);
   final base = image.hasAlpha ? image : image.convert(numChannels: 4);
   if (o.tile) {
     final stepX = (targetW * 1.6).round();
@@ -459,9 +448,11 @@ Uint8List encodeImage(img.Image image, ImgFormat format, int quality) {
   switch (format) {
     case ImgFormat.jpeg:
       final opaque = image.hasAlpha ? flattenAlpha(image, 0xFFFFFFFF) : image;
-      return img.encodeJpg(opaque,
-          quality: quality.clamp(1, 100),
-          chroma: quality >= 90 ? img.JpegChroma.yuv444 : img.JpegChroma.yuv420);
+      return img.encodeJpg(
+        opaque,
+        quality: quality.clamp(1, 100),
+        chroma: quality >= 90 ? img.JpegChroma.yuv444 : img.JpegChroma.yuv420,
+      );
     case ImgFormat.png:
       return img.encodePng(image, level: 9);
     case ImgFormat.webp:
@@ -472,10 +463,9 @@ Uint8List encodeImage(img.Image image, ImgFormat format, int quality) {
 /// Encodes [image], searching quality and (if allowed) dimensions so the
 /// output does not exceed [ImageSpec.targetBytes]. Never claims success when
 /// the target was not reached.
-ImageResult encodeWithTarget(
-    img.Image image, ImgFormat format, ImageSpec spec, List<String> notes) {
+ImageResult encodeWithTarget(img.Image image, ImgFormat format, ImageSpec spec, List<String> notes) {
   final target = spec.targetBytes;
-  Uint8List bytes = encodeImage(image, format, spec.quality);
+  final Uint8List bytes = encodeImage(image, format, spec.quality);
   if (target == null || bytes.length <= target) {
     return ImageResult(
       bytes: bytes,
@@ -488,44 +478,43 @@ ImageResult encodeWithTarget(
     );
   }
 
-  final canScale =
-      spec.allowDownscaleForSize && !(spec.resize?.isExact ?? false);
+  final canScale = spec.allowDownscaleForSize && !(spec.resize?.isExact ?? false);
   var current = image;
   var best = _Candidate(bytes, image, spec.quality);
 
   if (format.lossy) {
     for (var round = 0; round < 6; round++) {
-      final found = _searchQuality(current, format, target, spec.minQuality,
-          math.min(spec.quality, 95));
+      final found = _searchQuality(current, format, target, spec.minQuality, math.min(spec.quality, 95));
       if (found != null) {
-        if (found.quality < spec.quality) {
+        if ((found.quality ?? spec.quality) < spec.quality) {
           notes.add('Quality reduced to ${found.quality} to meet the size limit.');
         }
         if (current.width != image.width) {
-          notes.add('Dimensions reduced from ${image.width} x ${image.height} '
-              'to ${current.width} x ${current.height} to meet the size limit.');
+          notes.add(
+            'Dimensions reduced from ${image.width} x ${image.height} '
+            'to ${current.width} x ${current.height} to meet the size limit.',
+          );
         }
         return _result(found, format, true, notes);
       }
-      final atMin = _Candidate(
-          encodeImage(current, format, spec.minQuality), current, spec.minQuality);
+      final atMin = _Candidate(encodeImage(current, format, spec.minQuality), current, spec.minQuality);
       if (atMin.bytes.length < best.bytes.length) best = atMin;
       if (!canScale) break;
       // JPEG/WebP size scales roughly with pixel count.
-      final factor =
-          math.sqrt(target / atMin.bytes.length).clamp(0.3, 0.95).toDouble();
+      final factor = math.sqrt(target / atMin.bytes.length).clamp(0.3, 0.95).toDouble();
       final nw = (current.width * factor).round();
       final nh = (current.height * factor).round();
       if (nw < 16 || nh < 16) break;
-      current = img.copyResize(current,
-          width: nw, height: nh, interpolation: img.Interpolation.cubic);
+      current = img.copyResize(current, width: nw, height: nh, interpolation: img.Interpolation.cubic);
     }
     if (!canScale) {
       // Exact dimensions are required: allow very low quality as a last resort.
       final found = _searchQuality(current, format, target, 5, spec.minQuality - 1);
       if (found != null) {
-        notes.add('Quality had to be reduced to ${found.quality} because the '
-            'dimensions are fixed. Visible artefacts are likely.');
+        notes.add(
+          'Quality had to be reduced to ${found.quality} because the '
+          'dimensions are fixed. Visible artefacts are likely.',
+        );
         return _result(found, format, true, notes);
       }
       final lowest = _Candidate(encodeImage(current, format, 5), current, 5);
@@ -543,26 +532,28 @@ ImageResult encodeWithTarget(
     if (canScale) {
       var cur = image;
       for (var round = 0; round < 8; round++) {
-        final factor =
-            math.sqrt(target / best.bytes.length).clamp(0.3, 0.9).toDouble();
+        final factor = math.sqrt(target / best.bytes.length).clamp(0.3, 0.9).toDouble();
         final nw = (cur.width * factor).round();
         final nh = (cur.height * factor).round();
         if (nw < 16 || nh < 16) break;
-        cur = img.copyResize(cur,
-            width: nw, height: nh, interpolation: img.Interpolation.cubic);
+        cur = img.copyResize(cur, width: nw, height: nh, interpolation: img.Interpolation.cubic);
         final c = _Candidate(img.encodePng(cur, level: 9), cur, null);
         if (c.bytes.length < best.bytes.length) best = c;
         if (c.bytes.length <= target) {
-          notes.add('Dimensions reduced from ${image.width} x ${image.height} '
-              'to ${cur.width} x ${cur.height} to meet the size limit.');
+          notes.add(
+            'Dimensions reduced from ${image.width} x ${image.height} '
+            'to ${cur.width} x ${cur.height} to meet the size limit.',
+          );
           return _result(c, format, true, notes);
         }
       }
     }
   }
 
-  notes.add('Could not reach ${_kb(target)}; the smallest result is '
-      '${_kb(best.bytes.length)}.${canScale ? '' : ' Allowing smaller dimensions or a lossy format (JPG/WebP) would help.'}');
+  notes.add(
+    'Could not reach ${_kb(target)}; the smallest result is '
+    '${_kb(best.bytes.length)}.${canScale ? '' : ' Allowing smaller dimensions or a lossy format (JPG/WebP) would help.'}',
+  );
   return _result(best, format, false, notes);
 }
 
@@ -577,21 +568,18 @@ class _Candidate {
   final int? quality;
 }
 
-ImageResult _result(
-        _Candidate c, ImgFormat format, bool met, List<String> notes) =>
-    ImageResult(
-      bytes: c.bytes,
-      width: c.image.width,
-      height: c.image.height,
-      format: format,
-      quality: c.quality,
-      targetMet: met,
-      notes: notes,
-    );
+ImageResult _result(_Candidate c, ImgFormat format, bool met, List<String> notes) => ImageResult(
+  bytes: c.bytes,
+  width: c.image.width,
+  height: c.image.height,
+  format: format,
+  quality: c.quality,
+  targetMet: met,
+  notes: notes,
+);
 
 /// Highest quality in [lo]..[hi] whose encoding fits [target], or null.
-_Candidate? _searchQuality(
-    img.Image image, ImgFormat format, int target, int lo, int hi) {
+_Candidate? _searchQuality(img.Image image, ImgFormat format, int target, int lo, int hi) {
   if (hi < lo) return null;
   _Candidate? best;
   final low = _Candidate(encodeImage(image, format, lo), image, lo);

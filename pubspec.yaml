@@ -43,3 +43,9 @@ flutter:
           weight: 600
         - asset: assets/fonts/Inter-Bold.ttf
           weight: 700
+    # Same fonts the PDF engine embeds, so edit previews match the output.
+    - family: NotoSans
+      fonts:
+        - asset: android/app/src/main/assets/fonts/NotoSans-Regular.ttf
+        - asset: android/app/src/main/assets/fonts/NotoSans-Bold.ttf
+          weight: 700

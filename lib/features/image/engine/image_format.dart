@@ -6,13 +6,7 @@ enum ImgFormat {
   png('PNG', 'png', 'image/png', lossy: false, alpha: true),
   webp('WebP', 'webp', 'image/webp', lossy: true, alpha: true);
 
-  const ImgFormat(
-    this.label,
-    this.extension,
-    this.mime, {
-    required this.lossy,
-    required this.alpha,
-  });
+  const ImgFormat(this.label, this.extension, this.mime, {required this.lossy, required this.alpha});
 
   final String label;
   final String extension;
@@ -73,15 +67,5 @@ enum ImgFormat {
 /// Other formats we can decode (and convert from), but not write.
 bool isDecodableImagePath(String path) {
   final ext = path.split('.').last.toLowerCase();
-  return const {
-    'jpg',
-    'jpeg',
-    'jfif',
-    'png',
-    'webp',
-    'bmp',
-    'gif',
-    'tif',
-    'tiff',
-  }.contains(ext);
+  return const {'jpg', 'jpeg', 'jfif', 'png', 'webp', 'bmp', 'gif', 'tif', 'tiff'}.contains(ext);
 }

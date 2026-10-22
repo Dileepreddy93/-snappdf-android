@@ -28,6 +28,9 @@ sealed class PdfEdit {
     data class Text(
         override val page: Int, val x: Double, val y: Double, val text: String,
         val fontSize: Float, val color: Long, val bold: Boolean, val rotation: Double,
+        /** Distance from [y] to the first baseline; defaults to 0.95 em. */
+        val baseline: Double? = null,
+        val lineHeight: Double? = null,
     ) : PdfEdit()
 
     data class Image(
@@ -110,11 +113,12 @@ object PdfEdits {
         setRgb(cs, e.color)
         cs.saveGraphicsState()
         setOpacity(cs, alphaOf(e.color).takeIf { it > 0f } ?: 1f)
-        val lineHeight = e.fontSize * 1.25
+        val lineHeight = e.lineHeight ?: (e.fontSize * 1.25)
+        val firstBaseline = e.baseline ?: (e.fontSize * 0.95)
         e.text.split('\n').forEachIndexed { i, raw ->
             val line = Fonts.sanitize(font, raw)
             if (line.isEmpty()) return@forEachIndexed
-            val baseline = e.y + e.fontSize * 0.95 + i * lineHeight
+            val baseline = e.y + firstBaseline + i * lineHeight
             drawDisplayText(cs, g, font, line, e.fontSize, e.x, baseline, e.rotation, e.x, e.y)
         }
         cs.restoreGraphicsState()
